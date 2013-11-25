@@ -6,7 +6,7 @@ import vn.com.fpt.fti.api.model.SuccessResponseJson;
 public class ResponseHelper {
 	public static SuccessResponseJson buildSuccessJsonReponse(String result){
 		SuccessResponseJson json = new SuccessResponseJson();
-		json.status = "succses";
+		json.status = "success";
 		json.result = result;
 		return json;
 	}
@@ -25,6 +25,8 @@ public class ResponseHelper {
 			case 404:   errorMessage = "Not Found";
 						break;
 			case 411:   errorMessage = "Invalid Paramaters";
+						break;
+			case 500:   errorMessage = "Internal Error Server";
 						break;
 		}
 		return errorMessage;

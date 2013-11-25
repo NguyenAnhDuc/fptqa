@@ -1,13 +1,18 @@
 package vn.com.fpt.fti.api.controller;
 
-import javax.annotation.PostConstruct;
+import java.util.ArrayList;
 
+import javax.annotation.PostConstruct;
+import javax.naming.directory.SearchResult;
+
+import org.apache.lucene.search.Query;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.FileSystemXmlApplicationContext;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,10 +24,13 @@ import edu.stanford.nlp.ie.AbstractSequenceClassifier;
 import edu.stanford.nlp.ie.crf.CRFClassifier;
 import fpt.qa.qiafc.AFConverter;
 import fpt.qa.qiafc.AffirmativeForm;
+import vn.com.fpt.fti.api.helper.RankerHelper;
 import vn.com.fpt.fti.api.helper.ResponseHelper;
 import vn.com.fpt.fti.api.model.AffirmativeResponse;
 import vn.com.fpt.fti.api.model.FailResponseJson;
 import vn.com.fpt.fti.api.model.Person;
+import vn.com.fpt.fti.api.model.RankerRequest;
+import vn.com.fpt.fti.api.model.SolrResponse;
 import vn.com.fpt.fti.api.model.SuccessResponseJson;
 import vn.hus.nlp.tokenizer.VietTokenizer;
  
@@ -34,8 +42,9 @@ public class HomeController {
 	@Value("${expirationOffset}") public int exprnOffset;
 	public VietTokenizer vietTokenizer;
 	public AbstractSequenceClassifier classifier;
-
 	
+	@Value("${keywordSelectorFile}") String keywordSelectorFile;
+	@Value("${keywordExpanderFile}") String keywordExpanderFile;
 	@Value("${vietTokenPropertyFile}") String vietTokenFile;
 	@Value("${dataPath}") String dataPath;
 	@Value("${model}") String model;
@@ -68,12 +77,59 @@ public class HomeController {
 		return ""+ this.vietTokenFile;
 	}
 	
-	@RequestMapping(value="/testParam/{id}", method = RequestMethod.GET)
+	@RequestMapping(value="/testArray", method = RequestMethod.POST, produces="text/html; charset=UTF-8")
+	@ResponseBody
+	public String testArray(@RequestParam("sText") SolrResponse request){
+		String result = "This is result of a test Array function";
+		//return request.status;
+		return request.status;
+	}
+	
+	@RequestMapping(value="/testRanker", method = RequestMethod.POST, produces="application/json; charset=UTF-8")
+	@ResponseBody
+	public SuccessResponseJson testRanker(@RequestBody RankerRequest rankerRequest){
+		String result = "This is result of a test Array function";
+		//return request.status;
+		RankerHelper rankerHelper = new RankerHelper(keywordSelectorFile, keywordExpanderFile);
+		Query query = rankerHelper.buildQuery(rankerRequest.searchContent);
+		result = rankerHelper.getBestDoc(rankerRequest.answers, query);
+		return ResponseHelper.buildSuccessJsonReponse(result);
+	}
+	
+	@RequestMapping(value="/testJSON", method = RequestMethod.POST, produces="application/json; charset=UTF-8")
+	@ResponseBody
+	public Person testArray2(){
+		String result = "This is result of a test Array function";
+		//return request.status;
+		Person person = new Person();
+		person.name = "mit";
+		person.age = 21;
+		return person;
+	}
+	
+	@RequestMapping(value="/testParam/{id}", method = RequestMethod.POST, produces="text/html; charset=UTF-8")
 	@ResponseBody
 	public String testParam(@PathVariable String id){
 		String result = "This is result of a test function";
 		return id;
 	}
+	
+	
+	
+	/*@RequestMapping(value="/testRanker", method = RequestMethod.GET, produces="text/html; charset=UTF-8")
+	@ResponseBody
+	public String testRanker(){
+		String result = "This is result of a test function";
+		String searchcontent = "Chủ tịch fpt là ai";
+		ArrayList<String> ans = new ArrayList<String>();
+		ans.add("Ông Trương Gia Bình là chủ tịch tập đoàn fpt");
+		ans.add("Nguyễn Anh Đức là cựu sinh viên fpt");
+		RankerHelper rankerHelper = new RankerHelper(keywordSelectorFile, keywordExpanderFile);
+		Query query = rankerHelper.buildQuery(searchcontent);
+		result = rankerHelper.getBestDoc(ans, query);
+		
+		return result;
+	}*/
 	
 	@RequestMapping(value="/testToken", method = RequestMethod.POST, produces="application/json; charset=UTF-8")
 	@ResponseBody
@@ -89,11 +145,17 @@ public class HomeController {
 	@ResponseBody
 	public AffirmativeResponse testAffirmative(@RequestParam("sText") String sQuestion){
 		AffirmativeResponse  affirmativeResponse = new AffirmativeResponse();
-		AffirmativeForm affirm = AFConverter.process(sQuestion, this.dataPath);
-		affirmativeResponse.status = "success";
-		affirmativeResponse.questionWord = affirm.getQuestionWord();
-		affirmativeResponse.entityType = affirm.getNamedEntityType();
-		return affirmativeResponse;
+		try{
+			AffirmativeForm affirm = AFConverter.process(sQuestion, this.dataPath);
+			affirmativeResponse.status = "success";
+			affirmativeResponse.questionWord = affirm.getQuestionWord();
+			affirmativeResponse.entityType = affirm.getNamedEntityType();
+			return affirmativeResponse;
+		}
+		catch (Exception ex){
+			affirmativeResponse.status = "fail"; // sau nay phai improve
+			return affirmativeResponse;
+		}
 	}
 	
 	@RequestMapping(value="/testClassify", method = RequestMethod.POST, produces="application/json; charset=UTF-8")
